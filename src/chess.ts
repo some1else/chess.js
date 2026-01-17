@@ -1652,7 +1652,7 @@ export class Chess {
     if (forPiece === undefined || forPiece === KING) {
       if (!singleSquare || lastSquare === this._kings[us]) {
         const kingSquare = Number(this._kings[us])
-        
+
         // king-side castling
         if (this._castling[us] & BITS.KSIDE_CASTLE) {
           const castlingFrom = kingSquare
@@ -1807,7 +1807,7 @@ export class Chess {
   private _movePiece(from: number, to: number) {
     const fromSquare = Number(from)
     const toSquare = Number(to)
-    
+
     this._hash ^= this._pieceKey(fromSquare)
 
     this._board[toSquare] = this._board[fromSquare]
