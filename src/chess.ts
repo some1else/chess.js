@@ -967,11 +967,12 @@ export class Chess {
   }
 
   private _pieceKey(i: number) {
-    if (!this._board[i]) {
+    const square = Number(i)
+    if (!this._board[square]) {
       return 0n
     }
 
-    const { color, type } = this._board[i]
+    const { color, type } = this._board[square]
 
     const colorIndex = {
       w: 0,
@@ -987,15 +988,21 @@ export class Chess {
       k: 5,
     }[type]
 
-    return PIECE_KEYS[colorIndex][typeIndex][i]
+    return PIECE_KEYS[colorIndex][typeIndex][square]
   }
 
   private _epKey() {
-    return this._epSquare === EMPTY ? 0n : EP_KEYS[this._epSquare & 7]
+    if (this._epSquare === EMPTY) {
+      return 0n
+    }
+    const epSquare = Number(this._epSquare)
+    return EP_KEYS[epSquare & 7]
   }
 
   private _castlingKey() {
-    const index = (this._castling.w >> 5) | (this._castling.b >> 3)
+    const w = Number(this._castling.w)
+    const b = Number(this._castling.b)
+    const index = (w >> 5) | (b >> 3)
     return CASTLING_KEYS[index]
   }
 
@@ -1644,22 +1651,24 @@ export class Chess {
 
     if (forPiece === undefined || forPiece === KING) {
       if (!singleSquare || lastSquare === this._kings[us]) {
+        const kingSquare = Number(this._kings[us])
+        
         // king-side castling
         if (this._castling[us] & BITS.KSIDE_CASTLE) {
-          const castlingFrom = this._kings[us]
+          const castlingFrom = kingSquare
           const castlingTo = castlingFrom + 2
 
           if (
             !this._board[castlingFrom + 1] &&
             !this._board[castlingTo] &&
-            !this._attacked(them, this._kings[us]) &&
+            !this._attacked(them, kingSquare) &&
             !this._attacked(them, castlingFrom + 1) &&
             !this._attacked(them, castlingTo)
           ) {
             addMove(
               moves,
               us,
-              this._kings[us],
+              kingSquare,
               castlingTo,
               KING,
               undefined,
@@ -1670,21 +1679,21 @@ export class Chess {
 
         // queen-side castling
         if (this._castling[us] & BITS.QSIDE_CASTLE) {
-          const castlingFrom = this._kings[us]
+          const castlingFrom = kingSquare
           const castlingTo = castlingFrom - 2
 
           if (
             !this._board[castlingFrom - 1] &&
             !this._board[castlingFrom - 2] &&
             !this._board[castlingFrom - 3] &&
-            !this._attacked(them, this._kings[us]) &&
+            !this._attacked(them, kingSquare) &&
             !this._attacked(them, castlingFrom - 1) &&
             !this._attacked(them, castlingTo)
           ) {
             addMove(
               moves,
               us,
-              this._kings[us],
+              kingSquare,
               castlingTo,
               KING,
               undefined,
@@ -1796,12 +1805,15 @@ export class Chess {
   }
 
   private _movePiece(from: number, to: number) {
-    this._hash ^= this._pieceKey(from)
+    const fromSquare = Number(from)
+    const toSquare = Number(to)
+    
+    this._hash ^= this._pieceKey(fromSquare)
 
-    this._board[to] = this._board[from]
-    delete this._board[from]
+    this._board[toSquare] = this._board[fromSquare]
+    delete this._board[fromSquare]
 
-    this._hash ^= this._pieceKey(to)
+    this._hash ^= this._pieceKey(toSquare)
   }
 
   private _makeMove(move: InternalMove) {
@@ -1832,10 +1844,11 @@ export class Chess {
 
     // if ep capture, remove the captured pawn
     if (move.flags & BITS.EP_CAPTURE) {
+      const toSquare = Number(move.to)
       if (this._turn === BLACK) {
-        this._clear(move.to - 16)
+        this._clear(toSquare - 16)
       } else {
-        this._clear(move.to + 16)
+        this._clear(toSquare + 16)
       }
     }
 
@@ -1847,16 +1860,17 @@ export class Chess {
 
     // if we moved the king
     if (this._board[move.to].type === KING) {
-      this._kings[us] = move.to
+      const toSquare = Number(move.to)
+      this._kings[us] = toSquare
 
       // if we castled, move the rook next to the king
       if (move.flags & BITS.KSIDE_CASTLE) {
-        const castlingTo = move.to - 1
-        const castlingFrom = move.to + 1
+        const castlingTo = toSquare - 1
+        const castlingFrom = toSquare + 1
         this._movePiece(castlingFrom, castlingTo)
       } else if (move.flags & BITS.QSIDE_CASTLE) {
-        const castlingTo = move.to + 1
-        const castlingFrom = move.to - 2
+        const castlingTo = toSquare + 1
+        const castlingFrom = toSquare - 2
         this._movePiece(castlingFrom, castlingTo)
       }
 
@@ -1894,23 +1908,24 @@ export class Chess {
 
     // if big pawn move, update the en passant square
     if (move.flags & BITS.BIG_PAWN) {
+      const toSquare = Number(move.to)
       let epSquare
 
       if (us === BLACK) {
-        epSquare = move.to - 16
+        epSquare = toSquare - 16
       } else {
-        epSquare = move.to + 16
+        epSquare = toSquare + 16
       }
 
       this._fenEpSquare = epSquare
 
       if (
-        (!((move.to - 1) & 0x88) &&
-          this._board[move.to - 1]?.type === PAWN &&
-          this._board[move.to - 1]?.color === them) ||
-        (!((move.to + 1) & 0x88) &&
-          this._board[move.to + 1]?.type === PAWN &&
-          this._board[move.to + 1]?.color === them)
+        (!((toSquare - 1) & 0x88) &&
+          this._board[toSquare - 1]?.type === PAWN &&
+          this._board[toSquare - 1]?.color === them) ||
+        (!((toSquare + 1) & 0x88) &&
+          this._board[toSquare + 1]?.type === PAWN &&
+          this._board[toSquare + 1]?.color === them)
       ) {
         this._epSquare = epSquare
         this._hash ^= this._epKey()
@@ -1991,11 +2006,12 @@ export class Chess {
     if (move.captured) {
       if (move.flags & BITS.EP_CAPTURE) {
         // en passant capture
+        const toSquare = Number(move.to)
         let index: number
         if (us === BLACK) {
-          index = move.to - 16
+          index = toSquare - 16
         } else {
-          index = move.to + 16
+          index = toSquare + 16
         }
         this._set(index, { type: PAWN, color: them })
       } else {
@@ -2005,13 +2021,14 @@ export class Chess {
     }
 
     if (move.flags & (BITS.KSIDE_CASTLE | BITS.QSIDE_CASTLE)) {
+      const toSquare = Number(move.to)
       let castlingTo: number, castlingFrom: number
       if (move.flags & BITS.KSIDE_CASTLE) {
-        castlingTo = move.to + 1
-        castlingFrom = move.to - 1
+        castlingTo = toSquare + 1
+        castlingFrom = toSquare - 1
       } else {
-        castlingTo = move.to - 2
-        castlingFrom = move.to + 1
+        castlingTo = toSquare - 2
+        castlingFrom = toSquare + 1
       }
       this._movePiece(castlingFrom, castlingTo)
     }
